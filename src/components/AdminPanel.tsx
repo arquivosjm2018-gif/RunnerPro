@@ -10,7 +10,7 @@ import {
   RefreshCw,
   UserPlus
 } from 'lucide-react';
-import { User, CatalogItem, Raffle } from '../types';
+import { User, CatalogItem, Raffle, Professional } from '../types';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 
@@ -18,24 +18,28 @@ export default function AdminPanel() {
   const [users, setUsers] = useState<User[]>([]);
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [raffles, setRaffles] = useState<Raffle[]>([]);
-  const [activeTab, setActiveTab] = useState<'users' | 'catalog' | 'raffles'>('users');
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
+  const [activeTab, setActiveTab] = useState<'users' | 'catalog' | 'raffles' | 'professionals'>('users');
 
   const [newArt, setNewArt] = useState({ image_url: '', prompt: '', category: 'Elite' });
   const [newRaffle, setNewRaffle] = useState({ product: '', value_number: 10, total_numbers: 100 });
+  const [newPro, setNewPro] = useState({ name: '', specialty: '', bio: '', whatsapp: '', instagram: '', active: true });
 
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
-    const [uRes, cRes, rRes] = await Promise.all([
+    const [uRes, cRes, rRes, pRes] = await Promise.all([
       fetch('/api/admin/users'),
       fetch('/api/catalog'),
-      fetch('/api/raffles')
+      fetch('/api/raffles'),
+      fetch('/api/admin/professionals')
     ]);
     setUsers(await uRes.json());
     setCatalog(await cRes.json());
     setRaffles(await rRes.json());
+    setProfessionals(await pRes.json());
   };
 
   const updatePlan = async (userId: number, plan: string) => {
@@ -72,6 +76,21 @@ export default function AdminPanel() {
     fetchData();
   };
 
+  const addPro = async () => {
+    await fetch('/api/admin/professionals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newPro)
+    });
+    setNewPro({ name: '', specialty: '', bio: '', whatsapp: '', instagram: '', active: true });
+    fetchData();
+  };
+
+  const deletePro = async (id: number) => {
+    await fetch(`/api/admin/professionals/${id}`, { method: 'DELETE' });
+    fetchData();
+  };
+
   return (
     <div className="space-y-8">
       <header className="flex items-center justify-between">
@@ -80,7 +99,7 @@ export default function AdminPanel() {
             <ShieldCheck className="text-emerald-600" size={32} />
             Interface do Criador
           </h1>
-          <p className="text-zinc-500 mt-1">Administre usuários, catálogo de artes e rifas ativas.</p>
+          <p className="text-zinc-500 mt-1">Administre usuários, catálogo de artes, rifas e profissionais.</p>
         </div>
         <button onClick={fetchData} className="btn-secondary py-2 px-4 text-sm">
           <RefreshCw size={16} />
@@ -88,17 +107,18 @@ export default function AdminPanel() {
         </button>
       </header>
 
-      <div className="flex gap-2 border-b border-zinc-200 pb-px">
+      <div className="flex gap-2 border-b border-zinc-200 pb-px overflow-x-auto">
         {[
           { id: 'users', label: 'Usuários', icon: Users },
           { id: 'catalog', label: 'Catálogo', icon: Palette },
           { id: 'raffles', label: 'Rifas', icon: Ticket },
+          { id: 'professionals', label: 'Profissionais', icon: ShieldCheck },
         ].map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
             className={cn(
-              "flex items-center gap-2 px-6 py-3 text-sm font-bold transition-all border-b-2",
+              "flex items-center gap-2 px-6 py-3 text-sm font-bold transition-all border-b-2 whitespace-nowrap",
               activeTab === tab.id 
                 ? "border-emerald-600 text-emerald-600" 
                 : "border-transparent text-zinc-400 hover:text-zinc-600"
@@ -285,6 +305,68 @@ export default function AdminPanel() {
                       <span className="text-sm font-bold text-zinc-700 w-8 text-right">{raffle.sold_numbers}</span>
                     </div>
                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'professionals' && (
+          <div className="space-y-6">
+            <div className="glass-card p-6">
+              <h3 className="font-bold text-zinc-900 mb-4 flex items-center gap-2">
+                <Plus size={20} className="text-emerald-600" />
+                Cadastrar Profissional Parceiro
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <input 
+                  className="bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                  placeholder="Nome Completo"
+                  value={newPro.name}
+                  onChange={e => setNewPro({...newPro, name: e.target.value})}
+                />
+                <input 
+                  className="bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                  placeholder="Especialidade (ex: Nutricionista Esportivo)"
+                  value={newPro.specialty}
+                  onChange={e => setNewPro({...newPro, specialty: e.target.value})}
+                />
+                <input 
+                  className="bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                  placeholder="WhatsApp (ex: 5511999999999)"
+                  value={newPro.whatsapp}
+                  onChange={e => setNewPro({...newPro, whatsapp: e.target.value})}
+                />
+                <input 
+                  className="bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                  placeholder="Instagram (sem @)"
+                  value={newPro.instagram}
+                  onChange={e => setNewPro({...newPro, instagram: e.target.value})}
+                />
+                <textarea 
+                  className="md:col-span-2 bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 min-h-[80px]"
+                  placeholder="Breve biografia/descrição"
+                  value={newPro.bio}
+                  onChange={e => setNewPro({...newPro, bio: e.target.value})}
+                />
+              </div>
+              <button onClick={addPro} className="btn-primary w-full md:w-auto">
+                <Save size={18} />
+                Cadastrar Profissional
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {professionals.map(pro => (
+                <div key={pro.id} className="glass-card p-6 flex items-start justify-between">
+                  <div>
+                    <h4 className="font-bold text-zinc-900">{pro.name}</h4>
+                    <p className="text-xs text-emerald-600 font-bold">{pro.specialty}</p>
+                    <p className="text-xs text-zinc-500 mt-2 line-clamp-2">{pro.bio}</p>
+                  </div>
+                  <button onClick={() => deletePro(pro.id)} className="p-2 text-zinc-400 hover:text-red-500 transition-colors">
+                    <Trash2 size={18} />
+                  </button>
                 </div>
               ))}
             </div>

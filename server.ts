@@ -46,6 +46,26 @@ db.exec(`
     content TEXT,
     FOREIGN KEY(user_id) REFERENCES users(id)
   );
+  CREATE TABLE IF NOT EXISTS user_nutrition (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    meal TEXT,
+    time TEXT,
+    description TEXT,
+    calories INTEGER,
+    observation TEXT,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS recommended_professionals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    specialty TEXT,
+    bio TEXT,
+    whatsapp TEXT,
+    instagram TEXT,
+    active INTEGER DEFAULT 1
+  );
 `);
 
 async function startServer() {
@@ -59,7 +79,7 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
-  // Simple User Mock for Demo (In a real app, this would be handled by Auth)
+  // Simple User Mock for Demo
   app.get("/api/user/me", (req, res) => {
     let user = db.prepare("SELECT * FROM users LIMIT 1").get();
     if (!user) {
@@ -69,9 +89,59 @@ async function startServer() {
     res.json(user);
   });
 
+  // Nutrition Routes
+  app.get("/api/nutrition", (req, res) => {
+    const user = db.prepare("SELECT id FROM users LIMIT 1").get();
+    const logs = db.prepare("SELECT * FROM user_nutrition WHERE user_id = ? ORDER BY time DESC").all(user.id);
+    res.json(logs);
+  });
+
+  app.post("/api/nutrition", (req, res) => {
+    const user = db.prepare("SELECT id FROM users LIMIT 1").get();
+    const { meal, time, description, calories, observation } = req.body;
+    db.prepare("INSERT INTO user_nutrition (user_id, meal, time, description, calories, observation) VALUES (?, ?, ?, ?, ?, ?)")
+      .run(user.id, meal, time, description, calories, observation);
+    res.json({ success: true });
+  });
+
+  app.delete("/api/nutrition/:id", (req, res) => {
+    db.prepare("DELETE FROM user_nutrition WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
+  });
+
+  // Professionals Routes
+  app.get("/api/professionals", (req, res) => {
+    const items = db.prepare("SELECT * FROM recommended_professionals WHERE active = 1").all();
+    res.json(items);
+  });
+
+  // Admin: Professionals Management
+  app.get("/api/admin/professionals", (req, res) => {
+    const items = db.prepare("SELECT * FROM recommended_professionals").all();
+    res.json(items);
+  });
+
+  app.post("/api/admin/professionals", (req, res) => {
+    const { name, specialty, bio, whatsapp, instagram, active } = req.body;
+    db.prepare("INSERT INTO recommended_professionals (name, specialty, bio, whatsapp, instagram, active) VALUES (?, ?, ?, ?, ?, ?)")
+      .run(name, specialty, bio, whatsapp, instagram, active ? 1 : 0);
+    res.json({ success: true });
+  });
+
+  app.delete("/api/admin/professionals/:id", (req, res) => {
+    db.prepare("DELETE FROM recommended_professionals WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
+  });
+
   // Catalog Routes
   app.get("/api/catalog", (req, res) => {
     const items = db.prepare("SELECT * FROM catalog").all();
+    res.json(items);
+  });
+
+  // Raffles Routes
+  app.get("/api/raffles", (req, res) => {
+    const items = db.prepare("SELECT * FROM raffles").all();
     res.json(items);
   });
 

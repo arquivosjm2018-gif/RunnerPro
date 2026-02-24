@@ -119,3 +119,74 @@ Use linguagem clara e prática.`;
 
   return response.text;
 };
+
+export const generateNutritionStrategy = async (data: {
+  type: string;
+  distance: string;
+  objective: string;
+  time: string;
+  level: string;
+  restrictions: string;
+  currentNutrition: string;
+  plan: string;
+}) => {
+  const ai = getAI();
+  
+  let prompt = `Você é um nutricionista esportivo especializado em corrida de rua, trail e alta performance.
+
+Seu objetivo é montar uma estratégia alimentar personalizada baseada nas informações abaixo.
+
+⚠️ Importante:
+- Você NÃO substitui um nutricionista real.
+- Sempre incentive acompanhamento profissional.
+- Se o usuário relatar problema de saúde, restrições severas ou sintomas, recomende procurar um profissional.
+
+DADOS DO USUÁRIO:
+Tipo de treino: ${data.type}
+Distância: ${data.distance}
+Objetivo: ${data.objective}
+Horário do treino: ${data.time}
+Nível: ${data.level}
+Restrições alimentares: ${data.restrictions}
+Alimentação atual cadastrada pelo usuário:
+${data.currentNutrition}
+
+Com base nisso, gere:
+
+1️⃣ Estratégia geral alimentar para esse tipo de treino
+2️⃣ Sugestão de CAFÉ DA MANHÃ ideal (se aplicável)
+3️⃣ Sugestão de ALMOÇO ideal
+4️⃣ O que comer 60-90 minutos antes do treino
+5️⃣ O que consumir após o treino (recuperação)
+6️⃣ O que EVITAR antes do treino
+7️⃣ Dicas de hidratação
+8️⃣ Ajustes baseados na alimentação atual do usuário
+9️⃣ Respostas para dúvidas comuns sobre esse tipo de treino
+🔟 Quando procurar um nutricionista esportivo
+
+Regras:
+- Seja claro e didático
+- Evite termos excessivamente técnicos
+- Explique o porquê das escolhas
+- Priorize alimentos acessíveis no Brasil
+- Estruture em tópicos organizados`;
+
+  if (data.plan === 'Elite') {
+    prompt += `
+
+🔥 VERSÃO PREMIUM – ATLETA ELITE
+Adicione:
+- Estratégia de periodização nutricional
+- Estratégia para prova
+- Estratégia para semana pré-competição
+- Manipulação de carboidrato
+- Estratégia de reposição eletrolítica`;
+  }
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+  });
+
+  return response.text;
+};

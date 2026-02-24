@@ -16,7 +16,8 @@ import {
   Trophy,
   TrendingUp,
   Flame,
-  ShieldCheck
+  ShieldCheck,
+  Apple
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -31,7 +32,9 @@ import Promotions from './components/Promotions';
 
 import AdminPanel from './components/AdminPanel';
 
-type Page = 'dashboard' | 'hashtags' | 'captions' | 'catalog' | 'training' | 'raffles' | 'promotions' | 'admin';
+import NutritionAssistant from './components/NutritionAssistant';
+
+type Page = 'dashboard' | 'hashtags' | 'captions' | 'catalog' | 'training' | 'raffles' | 'promotions' | 'admin' | 'nutrition';
 
 export default function App() {
   const [activePage, setActivePage] = useState<Page>('dashboard');
@@ -48,6 +51,7 @@ export default function App() {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'hashtags', label: 'Hashtags', icon: Hash },
     { id: 'captions', label: 'Legendas IA', icon: ImageIcon },
+    { id: 'nutrition', label: 'Nutrição IA', icon: Apple },
     { id: 'catalog', label: 'Catálogo de Artes', icon: Palette },
     { id: 'training', label: 'Planilha de Treino', icon: Calendar },
     { id: 'raffles', label: 'Rifas Ativas', icon: Ticket },
@@ -60,6 +64,7 @@ export default function App() {
       case 'dashboard': return <Dashboard user={user} setPage={setActivePage} />;
       case 'hashtags': return <HashtagGenerator user={user} />;
       case 'captions': return <CaptionGenerator user={user} />;
+      case 'nutrition': return <NutritionAssistant user={user} />;
       case 'catalog': return <ArtCatalog user={user} />;
       case 'training': return <TrainingPlanner user={user} />;
       case 'raffles': return <RaffleList user={user} />;
