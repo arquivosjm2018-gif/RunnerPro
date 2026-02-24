@@ -1,6 +1,17 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+let aiInstance: GoogleGenAI | null = null;
+
+function getAI() {
+  if (!aiInstance) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY não encontrada. Verifique as configurações de Secrets no AI Studio.");
+    }
+    aiInstance = new GoogleGenAI({ apiKey });
+  }
+  return aiInstance;
+}
 
 export const generateHashtags = async (data: {
   type: string;
@@ -9,6 +20,7 @@ export const generateHashtags = async (data: {
   level: string;
   contentType: string;
 }) => {
+  const ai = getAI();
   const prompt = `Você é um especialista em crescimento orgânico para corredores no Instagram, TikTok e Strava.
 
 Gere 30 hashtags estratégicas baseadas nas seguintes informações:
@@ -40,6 +52,7 @@ Regras:
 };
 
 export const generateCaptionFromImage = async (base64Image: string, mimeType: string) => {
+  const ai = getAI();
   const prompt = `Você é um especialista em marketing esportivo para corredores.
 
 Analise a imagem enviada e descreva:
@@ -79,6 +92,7 @@ export const generateTrainingPlan = async (data: {
   timePerWorkout: number;
   injuries: string;
 }) => {
+  const ai = getAI();
   const prompt = `Você é um treinador profissional de corrida especializado em performance.
 
 Crie um plano de treino personalizado baseado em:
