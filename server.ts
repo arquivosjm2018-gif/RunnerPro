@@ -75,10 +75,45 @@ async function startServer() {
     res.json(items);
   });
 
-  // Raffles Routes
-  app.get("/api/raffles", (req, res) => {
-    const items = db.prepare("SELECT * FROM raffles").all();
-    res.json(items);
+  // Admin: User Management
+  app.get("/api/admin/users", (req, res) => {
+    const users = db.prepare("SELECT * FROM users").all();
+    res.json(users);
+  });
+
+  app.post("/api/admin/users/:id/plan", (req, res) => {
+    const { id } = req.params;
+    const { plan } = req.body;
+    db.prepare("UPDATE users SET plan = ? WHERE id = ?").run(plan, id);
+    res.json({ success: true });
+  });
+
+  // Admin: Catalog Management
+  app.post("/api/admin/catalog", (req, res) => {
+    const { image_url, prompt, category, created_by } = req.body;
+    db.prepare("INSERT INTO catalog (image_url, prompt, category, created_by) VALUES (?, ?, ?, ?)")
+      .run(image_url, prompt, category, created_by);
+    res.json({ success: true });
+  });
+
+  app.delete("/api/admin/catalog/:id", (req, res) => {
+    db.prepare("DELETE FROM catalog WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
+  });
+
+  // Admin: Raffle Management
+  app.post("/api/admin/raffles", (req, res) => {
+    const { product, value_number, total_numbers } = req.body;
+    db.prepare("INSERT INTO raffles (product, value_number, total_numbers) VALUES (?, ?, ?)")
+      .run(product, value_number, total_numbers);
+    res.json({ success: true });
+  });
+
+  app.post("/api/admin/raffles/:id/sold", (req, res) => {
+    const { id } = req.params;
+    const { sold_numbers } = req.body;
+    db.prepare("UPDATE raffles SET sold_numbers = ? WHERE id = ?").run(sold_numbers, id);
+    res.json({ success: true });
   });
 
   // Vite middleware for development

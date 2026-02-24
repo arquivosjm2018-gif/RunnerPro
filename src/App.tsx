@@ -15,7 +15,8 @@ import {
   LogOut,
   Trophy,
   TrendingUp,
-  Flame
+  Flame,
+  ShieldCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -28,7 +29,9 @@ import TrainingPlanner from './components/TrainingPlanner';
 import RaffleList from './components/RaffleList';
 import Promotions from './components/Promotions';
 
-type Page = 'dashboard' | 'hashtags' | 'captions' | 'catalog' | 'training' | 'raffles' | 'promotions';
+import AdminPanel from './components/AdminPanel';
+
+type Page = 'dashboard' | 'hashtags' | 'captions' | 'catalog' | 'training' | 'raffles' | 'promotions' | 'admin';
 
 export default function App() {
   const [activePage, setActivePage] = useState<Page>('dashboard');
@@ -49,6 +52,7 @@ export default function App() {
     { id: 'training', label: 'Planilha de Treino', icon: Calendar },
     { id: 'raffles', label: 'Rifas Ativas', icon: Ticket },
     { id: 'promotions', label: 'Super Promoções', icon: Tag },
+    ...(user?.plan === 'Elite' ? [{ id: 'admin', label: 'Painel do Criador', icon: ShieldCheck }] : []),
   ];
 
   const renderPage = () => {
@@ -60,6 +64,7 @@ export default function App() {
       case 'training': return <TrainingPlanner user={user} />;
       case 'raffles': return <RaffleList user={user} />;
       case 'promotions': return <Promotions user={user} />;
+      case 'admin': return <AdminPanel />;
       default: return <Dashboard user={user} setPage={setActivePage} />;
     }
   };
