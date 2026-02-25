@@ -171,6 +171,13 @@ async function startServer() {
   app.use("/uploads", express.static(path.join(__dirname, "public", "uploads")));
 
   // API Routes
+  app.use((req, res, next) => {
+    if (req.url.startsWith('/api')) {
+      console.log(`[API Request] ${req.method} ${req.url}`);
+    }
+    next();
+  });
+
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });

@@ -48,7 +48,10 @@ export default function App() {
 
   useEffect(() => {
     fetch('/api/user/me')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
+        return res.json();
+      })
       .then(data => setUser(data))
       .catch(err => console.error("Erro ao carregar usuário:", err));
   }, []);
