@@ -4,11 +4,20 @@ import path from "path";
 import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
 import dotenv from "dotenv";
+import fs from "fs";
+import { fetch as nodeFetch } from "undici";
+import * as cheerio from "cheerio";
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, "public", "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 const db = new Database("runnerpro.db");
 
@@ -19,23 +28,36 @@ db.exec(`
     name TEXT,
     email TEXT UNIQUE,
     plan TEXT DEFAULT 'Starter',
+    role TEXT DEFAULT 'user',
     status_pagamento TEXT DEFAULT 'Pendente'
   );
 
   CREATE TABLE IF NOT EXISTS raffles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     product TEXT,
+    description TEXT,
     value_number REAL,
     total_numbers INTEGER,
     sold_numbers INTEGER DEFAULT 0,
-    status TEXT DEFAULT 'Ativo'
+    draw_date TEXT,
+    status TEXT DEFAULT 'Ativo',
+    image_url TEXT,
+    image_path TEXT,
+    thumbnail_url TEXT
   );
 
   CREATE TABLE IF NOT EXISTS catalog (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT,
     image_url TEXT,
+    image_path TEXT,
+    preview_blur_url TEXT,
     prompt TEXT,
+    description TEXT,
     category TEXT,
+    style TEXT,
+    min_plan TEXT DEFAULT 'Starter',
+    status TEXT DEFAULT 'Ativo',
     created_by TEXT
   );
 
@@ -57,6 +79,18 @@ db.exec(`
     FOREIGN KEY(user_id) REFERENCES users(id)
   );
 
+  CREATE TABLE IF NOT EXISTS promotions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT,
+    description TEXT,
+    price TEXT,
+    original_price TEXT,
+    category TEXT,
+    link TEXT,
+    image_url TEXT,
+    active INTEGER DEFAULT 1
+  );
+
   CREATE TABLE IF NOT EXISTS recommended_professionals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT,
@@ -64,26 +98,106 @@ db.exec(`
     bio TEXT,
     whatsapp TEXT,
     instagram TEXT,
+    foto_url TEXT,
+    foto_path TEXT,
     active INTEGER DEFAULT 1
   );
 `);
+
+// Migration to add missing columns if they don't exist
+const tablesToMigrate = {
+  raffles: [
+    { name: 'description', type: 'TEXT' },
+    { name: 'draw_date', type: 'TEXT' },
+    { name: 'image_url', type: 'TEXT' },
+    { name: 'image_path', type: 'TEXT' },
+    { name: 'thumbnail_url', type: 'TEXT' }
+  ],
+  catalog: [
+    { name: 'title', type: 'TEXT' },
+    { name: 'image_path', type: 'TEXT' },
+    { name: 'preview_blur_url', type: 'TEXT' },
+    { name: 'description', type: 'TEXT' },
+    { name: 'style', type: 'TEXT' },
+    { name: 'min_plan', type: 'TEXT DEFAULT "Starter"' },
+    { name: 'status', type: 'TEXT DEFAULT "Ativo"' }
+  ],
+  recommended_professionals: [
+    { name: 'foto_url', type: 'TEXT' },
+    { name: 'foto_path', type: 'TEXT' }
+  ],
+  users: [
+    { name: 'role', type: 'TEXT DEFAULT "user"' }
+  ]
+};
+
+for (const [table, columns] of Object.entries(tablesToMigrate)) {
+  const info = db.prepare(`PRAGMA table_info(${table})`).all();
+  const existingColumns = info.map((col: any) => col.name);
+  for (const col of columns) {
+    if (!existingColumns.includes(col.name)) {
+      try {
+        db.prepare(`ALTER TABLE ${table} ADD COLUMN ${col.name} ${col.type}`).run();
+        console.log(`Added column ${col.name} to table ${table}`);
+      } catch (e) {
+        console.error(`Error adding column ${col.name} to ${table}:`, e);
+      }
+    }
+  }
+}
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json({ limit: '10mb' }));
+  app.use(express.json({ limit: '50mb' }));
+  
+  // Serve static files from public
+  app.use("/uploads", express.static(path.join(__dirname, "public", "uploads")));
 
   // API Routes
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });
 
+  // Upload Endpoint (Simulating Cloud Storage)
+  app.post("/api/upload", (req, res) => {
+    const { base64, filename, type } = req.body;
+    if (!base64 || !filename) {
+      return res.status(400).json({ error: "Missing data" });
+    }
+
+    try {
+      const base64Data = base64.replace(/^data:image\/\w+;base64,/, "");
+      const buffer = Buffer.from(base64Data, "base64");
+      const extension = filename.split('.').pop();
+      const newFilename = `${type || 'upload'}_${Date.now()}.${extension}`;
+      const filePath = path.join(uploadsDir, newFilename);
+      
+      fs.writeFileSync(filePath, buffer);
+      
+      const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
+      const fileUrl = `${appUrl}/uploads/${newFilename}`;
+      
+      res.json({ 
+        url: fileUrl,
+        path: `/uploads/${newFilename}`
+      });
+    } catch (error) {
+      console.error("Upload error:", error);
+      res.status(500).json({ error: "Failed to upload file" });
+    }
+  });
+
   // Simple User Mock for Demo
   app.get("/api/user/me", (req, res) => {
     let user = db.prepare("SELECT * FROM users LIMIT 1").get();
     if (!user) {
-      db.prepare("INSERT INTO users (name, email, plan) VALUES (?, ?, ?)").run("Runner Guest", "guest@runnerpro.ai", "Elite");
+      db.prepare("INSERT INTO users (name, email, plan, role) VALUES (?, ?, ?, ?)").run("Runner Guest", "guest@runnerpro.ai", "Elite", "admin");
+      user = db.prepare("SELECT * FROM users LIMIT 1").get();
+    } else {
+      // Force admin status for the demo user every time they fetch
+      db.prepare("UPDATE users SET role = 'admin', plan = 'Elite' WHERE id = ?").run(user.id);
       user = db.prepare("SELECT * FROM users LIMIT 1").get();
     }
     res.json(user);
@@ -109,6 +223,58 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  // Promotions Routes
+  app.get("/api/promotions", (req, res) => {
+    const items = db.prepare("SELECT * FROM promotions WHERE active = 1").all();
+    res.json(items);
+  });
+
+  app.get("/api/admin/promotions", (req, res) => {
+    const items = db.prepare("SELECT * FROM promotions").all();
+    res.json(items);
+  });
+
+  app.post("/api/admin/promotions", (req, res) => {
+    const { title, description, price, original_price, category, link, image_url, active } = req.body;
+    db.prepare(`
+      INSERT INTO promotions (title, description, price, original_price, category, link, image_url, active)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(title, description, price, original_price, category, link, image_url, active ? 1 : 0);
+    res.json({ success: true });
+  });
+
+  app.delete("/api/admin/promotions/:id", (req, res) => {
+    db.prepare("DELETE FROM promotions WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
+  });
+
+  // Helper to fetch metadata from URL
+  app.post("/api/utils/fetch-metadata", async (req, res) => {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: "URL is required" });
+
+    try {
+      const response = await nodeFetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+      });
+      const html = await response.text();
+      const $ = cheerio.load(html);
+
+      const metadata = {
+        title: $('meta[property="og:title"]').attr('content') || $('title').text(),
+        description: $('meta[property="og:description"]').attr('content') || $('meta[name="description"]').attr('content'),
+        image: $('meta[property="og:image"]').attr('content') || $('meta[name="twitter:image"]').attr('content')
+      };
+
+      res.json(metadata);
+    } catch (error) {
+      console.error("Metadata fetch error:", error);
+      res.status(500).json({ error: "Failed to fetch metadata" });
+    }
+  });
+
   // Professionals Routes
   app.get("/api/professionals", (req, res) => {
     const items = db.prepare("SELECT * FROM recommended_professionals WHERE active = 1").all();
@@ -122,9 +288,9 @@ async function startServer() {
   });
 
   app.post("/api/admin/professionals", (req, res) => {
-    const { name, specialty, bio, whatsapp, instagram, active } = req.body;
-    db.prepare("INSERT INTO recommended_professionals (name, specialty, bio, whatsapp, instagram, active) VALUES (?, ?, ?, ?, ?, ?)")
-      .run(name, specialty, bio, whatsapp, instagram, active ? 1 : 0);
+    const { name, specialty, bio, whatsapp, instagram, active, foto_url, foto_path } = req.body;
+    db.prepare("INSERT INTO recommended_professionals (name, specialty, bio, whatsapp, instagram, active, foto_url, foto_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+      .run(name, specialty, bio, whatsapp, instagram, active ? 1 : 0, foto_url, foto_path);
     res.json({ success: true });
   });
 
@@ -160,9 +326,12 @@ async function startServer() {
 
   // Admin: Catalog Management
   app.post("/api/admin/catalog", (req, res) => {
-    const { image_url, prompt, category, created_by } = req.body;
-    db.prepare("INSERT INTO catalog (image_url, prompt, category, created_by) VALUES (?, ?, ?, ?)")
-      .run(image_url, prompt, category, created_by);
+    const { title, image_url, image_path, preview_blur_url, prompt, description, category, style, min_plan, status, created_by } = req.body;
+    db.prepare(`
+      INSERT INTO catalog (
+        title, image_url, image_path, preview_blur_url, prompt, description, category, style, min_plan, status, created_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(title, image_url, image_path, preview_blur_url, prompt, description, category, style, min_plan, status, created_by);
     res.json({ success: true });
   });
 
@@ -173,9 +342,12 @@ async function startServer() {
 
   // Admin: Raffle Management
   app.post("/api/admin/raffles", (req, res) => {
-    const { product, value_number, total_numbers } = req.body;
-    db.prepare("INSERT INTO raffles (product, value_number, total_numbers) VALUES (?, ?, ?)")
-      .run(product, value_number, total_numbers);
+    const { product, description, value_number, total_numbers, draw_date, status, image_url, image_path, thumbnail_url } = req.body;
+    db.prepare(`
+      INSERT INTO raffles (
+        product, description, value_number, total_numbers, draw_date, status, image_url, image_path, thumbnail_url
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(product, description, value_number, total_numbers, draw_date, status, image_url, image_path, thumbnail_url);
     res.json({ success: true });
   });
 

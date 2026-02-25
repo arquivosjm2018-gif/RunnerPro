@@ -5,36 +5,28 @@ import { motion } from 'motion/react';
 
 export default function RaffleList({ user }: { user: User | null }) {
   const [raffles, setRaffles] = useState<Raffle[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mock data
-    setRaffles([
-      {
-        id: 1,
-        product: 'Nike Air Zoom Alphafly NEXT% 3',
-        value_number: 10.00,
-        total_numbers: 200,
-        sold_numbers: 142,
-        status: 'Ativo'
-      },
-      {
-        id: 2,
-        product: 'Garmin Forerunner 965',
-        value_number: 15.00,
-        total_numbers: 150,
-        sold_numbers: 45,
-        status: 'Ativo'
-      },
-      {
-        id: 3,
-        product: 'Kit Suplementação Elite (Whey + Creatina + Gel)',
-        value_number: 5.00,
-        total_numbers: 100,
-        sold_numbers: 88,
-        status: 'Ativo'
-      }
-    ]);
+    fetch('/api/raffles')
+      .then(res => res.json())
+      .then(data => {
+        setRaffles(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Error fetching raffles:", err);
+        setLoading(false);
+      });
   }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -61,7 +53,7 @@ export default function RaffleList({ user }: { user: User | null }) {
             >
               <div className="h-48 bg-zinc-100 relative overflow-hidden">
                 <img 
-                  src={`https://picsum.photos/seed/gear${raffle.id}/600/400`} 
+                  src={raffle.image_url || `https://picsum.photos/seed/gear${raffle.id}/600/400`} 
                   alt={raffle.product}
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"

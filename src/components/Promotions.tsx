@@ -1,38 +1,32 @@
-import React from 'react';
-import { Tag, ExternalLink, Percent, ShoppingBag, ArrowRight } from 'lucide-react';
-import { User } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Tag, ExternalLink, Percent, ShoppingBag, ArrowRight, Loader2 } from 'lucide-react';
+import { User, Promotion } from '../types';
 import { motion } from 'motion/react';
 
 export default function Promotions({ user }: { user: User | null }) {
-  const promos = [
-    {
-      id: 1,
-      title: 'Nike Vaporfly 3 - 30% OFF',
-      description: 'O tênis mais rápido da Nike com um desconto imperdível para membros RunnerPro.',
-      price: 'R$ 1.299,00',
-      originalPrice: 'R$ 1.899,00',
-      category: 'Tênis',
-      link: '#'
-    },
-    {
-      id: 2,
-      title: 'Garmin Forerunner 255',
-      description: 'Precisão absoluta no seu pulso. Promoção exclusiva na Netshoes via nosso link.',
-      price: 'R$ 2.100,00',
-      originalPrice: 'R$ 2.800,00',
-      category: 'Acessórios',
-      link: '#'
-    },
-    {
-      id: 3,
-      title: 'Kit Gel de Carboidrato (10 un)',
-      description: 'Energia para seus longões. Compre 10 e leve 12.',
-      price: 'R$ 90,00',
-      originalPrice: 'R$ 120,00',
-      category: 'Suplementos',
-      link: '#'
-    }
-  ];
+  const [promos, setPromos] = useState<Promotion[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/promotions')
+      .then(res => res.json())
+      .then(data => {
+        setPromos(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Error fetching promotions:", err);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="animate-spin text-emerald-600" size={32} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -48,11 +42,21 @@ export default function Promotions({ user }: { user: User | null }) {
             whileHover={{ scale: 1.02 }}
             className="glass-card overflow-hidden flex flex-col"
           >
-            <div className="p-6 flex-1">
-              <div className="flex items-center justify-between mb-4">
-                <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider rounded-lg border border-emerald-100">
+            <div className="relative aspect-video overflow-hidden bg-zinc-100">
+              <img 
+                src={promo.image_url || 'https://picsum.photos/seed/promo/800/450'} 
+                alt={promo.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute top-4 left-4">
+                <span className="px-2 py-1 bg-white/90 backdrop-blur-sm text-emerald-700 text-[10px] font-bold uppercase tracking-wider rounded-lg border border-emerald-100">
                   {promo.category}
                 </span>
+              </div>
+            </div>
+            <div className="p-6 flex-1">
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-1 text-emerald-600 font-bold">
                   <Percent size={14} />
                   <span className="text-sm">OFERTA</span>
@@ -64,13 +68,18 @@ export default function Promotions({ user }: { user: User | null }) {
               
               <div className="flex items-baseline gap-2 mb-6">
                 <span className="text-2xl font-display font-bold text-zinc-900">{promo.price}</span>
-                <span className="text-sm text-zinc-400 line-through">{promo.originalPrice}</span>
+                <span className="text-sm text-zinc-400 line-through">{promo.original_price}</span>
               </div>
 
-              <button className="w-full btn-primary py-2.5 text-sm">
+              <a 
+                href={promo.link} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-full btn-primary py-2.5 text-sm flex items-center justify-center gap-2"
+              >
                 Ver Promoção
                 <ExternalLink size={16} />
-              </button>
+              </a>
             </div>
             <div className="bg-zinc-50 p-3 border-t border-zinc-100 flex items-center justify-center gap-2 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
               <ShoppingBag size={12} />

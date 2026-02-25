@@ -9,7 +9,8 @@ import {
   Flame,
   Zap,
   Calendar,
-  Hash
+  Hash,
+  ShieldCheck
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -31,10 +32,19 @@ export default function Dashboard({ user, setPage }: DashboardProps) {
     { id: 'captions', label: 'Legenda por Foto', description: 'IA analisa sua performance', icon: Zap },
     { id: 'training', label: 'Ver Planilha', description: 'Próximos treinos da semana', icon: Calendar },
     { id: 'catalog', label: 'Catálogo de Artes', icon: Palette, description: 'Prompts exclusivos' },
+    ...(user?.role === 'admin' ? [{ id: 'admin', label: 'Painel do Criador', description: 'Gerenciar plataforma', icon: ShieldCheck }] : []),
   ];
 
   return (
     <div className="space-y-8">
+      <button 
+        onClick={() => setPage('admin')} 
+        className="w-full bg-red-600 hover:bg-red-700 text-white py-6 rounded-3xl font-black text-xl shadow-2xl shadow-red-900/20 flex items-center justify-center gap-4 transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+      >
+        <ShieldCheck size={32} />
+        ACESSO DIRETO AO PAINEL DO CRIADOR
+      </button>
+
       <header>
         <h1 className="text-3xl font-display font-bold text-zinc-900">Olá, {user?.name?.split(' ')[0] || 'Corredor'}! 👋</h1>
         <p className="text-zinc-500 mt-1">Bem-vindo ao seu centro de performance RunnerPro AI.</p>

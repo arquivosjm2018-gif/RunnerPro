@@ -3,23 +3,36 @@ export interface User {
   name: string;
   email: string;
   plan: 'Starter' | 'Pro' | 'Elite';
+  role: 'user' | 'admin';
   status_pagamento: string;
 }
 
 export interface Raffle {
   id: number;
   product: string;
+  description: string;
   value_number: number;
   total_numbers: number;
   sold_numbers: number;
-  status: string;
+  draw_date: string;
+  status: 'Ativo' | 'Inativo';
+  image_url?: string;
+  image_path?: string;
+  thumbnail_url?: string;
 }
 
 export interface CatalogItem {
   id: number;
+  title: string;
   image_url: string;
+  image_path?: string;
+  preview_blur_url?: string;
   prompt: string;
+  description: string;
   category: string;
+  style: string;
+  min_plan: 'Starter' | 'Pro' | 'Elite';
+  status: 'Ativo' | 'Inativo';
   created_by: string;
 }
 
@@ -40,5 +53,19 @@ export interface Professional {
   bio: string;
   whatsapp: string;
   instagram?: string;
+  foto_url?: string;
+  foto_path?: string;
+  active: number;
+}
+
+export interface Promotion {
+  id: number;
+  title: string;
+  description: string;
+  price: string;
+  original_price: string;
+  category: string;
+  link: string;
+  image_url: string;
   active: number;
 }

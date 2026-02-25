@@ -17,7 +17,9 @@ import {
   TrendingUp,
   Flame,
   ShieldCheck,
-  Apple
+  Apple,
+  UserCheck,
+  Shield
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -33,8 +35,9 @@ import Promotions from './components/Promotions';
 import AdminPanel from './components/AdminPanel';
 
 import NutritionAssistant from './components/NutritionAssistant';
+import ProfessionalList from './components/ProfessionalList';
 
-type Page = 'dashboard' | 'hashtags' | 'captions' | 'catalog' | 'training' | 'raffles' | 'promotions' | 'admin' | 'nutrition';
+type Page = 'dashboard' | 'hashtags' | 'captions' | 'catalog' | 'training' | 'raffles' | 'promotions' | 'admin' | 'nutrition' | 'professionals';
 
 export default function App() {
   const [activePage, setActivePage] = useState<Page>('dashboard');
@@ -44,19 +47,21 @@ export default function App() {
   useEffect(() => {
     fetch('/api/user/me')
       .then(res => res.json())
-      .then(data => setUser(data));
+      .then(data => setUser(data))
+      .catch(err => console.error("Erro ao carregar usuário:", err));
   }, []);
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'admin', label: 'Painel do Criador', icon: Shield },
     { id: 'hashtags', label: 'Hashtags', icon: Hash },
     { id: 'captions', label: 'Legendas IA', icon: ImageIcon },
     { id: 'nutrition', label: 'Nutrição IA', icon: Apple },
     { id: 'catalog', label: 'Catálogo de Artes', icon: Palette },
     { id: 'training', label: 'Planilha de Treino', icon: Calendar },
+    { id: 'professionals', label: 'Profissionais', icon: UserCheck },
     { id: 'raffles', label: 'Rifas Ativas', icon: Ticket },
     { id: 'promotions', label: 'Super Promoções', icon: Tag },
-    ...(user?.plan === 'Elite' ? [{ id: 'admin', label: 'Painel do Criador', icon: ShieldCheck }] : []),
   ];
 
   const renderPage = () => {
@@ -67,6 +72,7 @@ export default function App() {
       case 'nutrition': return <NutritionAssistant user={user} />;
       case 'catalog': return <ArtCatalog user={user} />;
       case 'training': return <TrainingPlanner user={user} />;
+      case 'professionals': return <ProfessionalList />;
       case 'raffles': return <RaffleList user={user} />;
       case 'promotions': return <Promotions user={user} />;
       case 'admin': return <AdminPanel />;
@@ -76,6 +82,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex bg-zinc-50">
+      <div className="fixed top-0 left-0 w-full bg-red-600 text-white text-[10px] text-center z-[9999] py-1 font-bold">
+        DEBUG: PAINEL DO CRIADOR ATIVADO NO MENU LATERAL
+      </div>
       {/* Sidebar */}
       <aside 
         className={cn(
@@ -91,7 +100,7 @@ export default function App() {
             <span className="text-xl font-display font-bold tracking-tight">RunnerPro AI</span>
           </div>
 
-          <nav className="flex-1 px-4 space-y-1 mt-4">
+          <nav className="flex-1 px-4 space-y-1 mt-4 overflow-y-auto custom-scrollbar">
             {navItems.map((item) => (
               <button
                 key={item.id}
@@ -121,7 +130,12 @@ export default function App() {
                   <UserIcon size={20} className="text-zinc-400" />
                 </div>
                 <div className="overflow-hidden">
-                  <p className="text-sm font-semibold truncate">{user?.name || 'Carregando...'}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold truncate">{user?.name || 'Carregando...'}</p>
+                    {user?.role === 'admin' && (
+                      <span className="bg-emerald-500 text-[8px] font-black px-1 rounded text-white">ADMIN</span>
+                    )}
+                  </div>
                   <p className="text-xs text-zinc-500 truncate">{user?.plan || 'Starter'} Plan</p>
                 </div>
               </div>
@@ -137,6 +151,11 @@ export default function App() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="h-16 bg-white border-b border-zinc-200 flex items-center justify-between px-6 lg:px-8">
+          {user?.role === 'admin' && (
+            <div className="absolute top-0 left-0 right-0 bg-emerald-600 text-white text-[10px] py-1 px-4 text-center font-bold z-[60]">
+              MODO ADMINISTRADOR ATIVO • <button onClick={() => setActivePage('admin')} className="underline">CLIQUE AQUI PARA ACESSAR O PAINEL</button>
+            </div>
+          )}
           <button 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="lg:hidden p-2 text-zinc-500 hover:bg-zinc-100 rounded-lg"
