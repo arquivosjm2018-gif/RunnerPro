@@ -11,9 +11,12 @@ import {
   UserPlus,
   Tag,
   Link as LinkIcon,
-  Loader2
+  Loader2,
+  Film,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
-import { User, CatalogItem, Raffle, Professional, Promotion } from '../types';
+import { User, CatalogItem, Raffle, Professional, Promotion, Media } from '../types';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 
@@ -23,7 +26,8 @@ export default function AdminPanel() {
   const [raffles, setRaffles] = useState<Raffle[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
-  const [activeTab, setActiveTab] = useState<'users' | 'catalog' | 'raffles' | 'professionals' | 'promotions'>('users');
+  const [media, setMedia] = useState<Media[]>([]);
+  const [activeTab, setActiveTab] = useState<'users' | 'catalog' | 'raffles' | 'professionals' | 'promotions' | 'media'>('users');
   const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
 
   const [newArt, setNewArt] = useState({ 
@@ -67,6 +71,24 @@ export default function AdminPanel() {
     image_url: '',
     active: true
   });
+  const [newMedia, setNewMedia] = useState({
+    titulo: '',
+    tipo: 'Filme',
+    categoria: 'Corrida',
+    sinopse: '',
+    plataforma: '',
+    ano: new Date().getFullYear(),
+    imagem_url: '',
+    link_externo: ''
+  });
+  const [newUser, setNewUser] = useState({
+    name: '',
+    email: '',
+    plan: 'Starter',
+    role: 'user'
+  });
+  const [showUserForm, setShowUserForm] = useState(false);
+  const [isAddingUser, setIsAddingUser] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -104,18 +126,20 @@ export default function AdminPanel() {
   };
 
   const fetchData = async () => {
-    const [uRes, cRes, rRes, pRes, prRes] = await Promise.all([
+    const [uRes, cRes, rRes, pRes, prRes, mRes] = await Promise.all([
       fetch('/api/admin/users'),
       fetch('/api/catalog'),
       fetch('/api/raffles'),
       fetch('/api/admin/professionals'),
-      fetch('/api/admin/promotions')
+      fetch('/api/admin/promotions'),
+      fetch('/api/admin/media')
     ]);
     setUsers(await uRes.json());
     setCatalog(await cRes.json());
     setRaffles(await rRes.json());
     setProfessionals(await pRes.json());
     setPromotions(await prRes.json());
+    setMedia(await mRes.json());
   };
 
   const updatePlan = async (userId: number, plan: string) => {
@@ -235,6 +259,59 @@ export default function AdminPanel() {
     fetchData();
   };
 
+  const addMedia = async () => {
+    await fetch('/api/media', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...newMedia, role: 'admin' })
+    });
+    setNewMedia({
+      titulo: '',
+      tipo: 'Filme',
+      categoria: 'Corrida',
+      sinopse: '',
+      plataforma: '',
+      ano: new Date().getFullYear(),
+      imagem_url: '',
+      link_externo: ''
+    });
+    fetchData();
+  };
+
+  const approveMedia = async (id: number) => {
+    await fetch(`/api/admin/media/approve/${id}`, { method: 'POST' });
+    fetchData();
+  };
+
+  const deleteMedia = async (id: number) => {
+    await fetch(`/api/admin/media/${id}`, { method: 'DELETE' });
+    fetchData();
+  };
+
+  const addUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAddingUser(true);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newUser)
+      });
+      if (res.ok) {
+        setNewUser({ name: '', email: '', plan: 'Starter', role: 'user' });
+        setShowUserForm(false);
+        fetchData();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Erro ao adicionar usuário");
+      }
+    } catch (err) {
+      console.error("Error adding user:", err);
+    } finally {
+      setIsAddingUser(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <header className="flex items-center justify-between">
@@ -258,6 +335,7 @@ export default function AdminPanel() {
           { id: 'raffles', label: 'Rifas', icon: Ticket },
           { id: 'professionals', label: 'Profissionais', icon: ShieldCheck },
           { id: 'promotions', label: 'Promoções', icon: Tag },
+          { id: 'media', label: 'Filmes & Séries', icon: Film },
         ].map(tab => (
           <button
             key={tab.id}
@@ -277,8 +355,81 @@ export default function AdminPanel() {
 
       <div className="grid grid-cols-1 gap-8">
         {activeTab === 'users' && (
-          <div className="glass-card overflow-hidden">
-            <table className="w-full text-left border-collapse">
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-zinc-900">Gestão de Alunos</h3>
+              <button 
+                onClick={() => setShowUserForm(!showUserForm)}
+                className="btn-primary"
+              >
+                <UserPlus size={18} />
+                Adicionar Usuário
+              </button>
+            </div>
+
+            {showUserForm && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="glass-card p-6 border-emerald-100"
+              >
+                <form onSubmit={addUser} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-400 uppercase mb-2">Nome do Cliente</label>
+                    <input 
+                      required
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="Ex: João Silva"
+                      value={newUser.name}
+                      onChange={e => setNewUser({...newUser, name: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-400 uppercase mb-2">E-mail da Compra</label>
+                    <input 
+                      required
+                      type="email"
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="exemplo@email.com"
+                      value={newUser.email}
+                      onChange={e => setNewUser({...newUser, email: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-400 uppercase mb-2">Plano Adquirido</label>
+                    <select 
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                      value={newUser.plan}
+                      onChange={e => setNewUser({...newUser, plan: e.target.value})}
+                    >
+                      <option>Starter</option>
+                      <option>Pro</option>
+                      <option>Elite</option>
+                    </select>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      type="submit" 
+                      disabled={isAddingUser}
+                      className="flex-1 btn-primary py-3"
+                    >
+                      {isAddingUser ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                      Cadastrar
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setShowUserForm(false)}
+                      className="px-4 py-3 bg-zinc-100 text-zinc-500 rounded-xl hover:bg-zinc-200 transition-colors"
+                    >
+                      <XCircle size={18} />
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            )}
+
+            <div className="glass-card overflow-hidden">
+              <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-zinc-50 border-b border-zinc-100">
                   <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">Usuário</th>
@@ -325,6 +476,7 @@ export default function AdminPanel() {
               </tbody>
             </table>
           </div>
+        </div>
         )}
 
         {activeTab === 'catalog' && (
@@ -729,6 +881,138 @@ export default function AdminPanel() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'media' && (
+          <div className="space-y-6">
+            <div className="glass-card p-6">
+              <h3 className="font-bold text-zinc-900 mb-4 flex items-center gap-2">
+                <Plus size={20} className="text-emerald-600" />
+                Cadastrar Novo Filme ou Série
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <input 
+                  className="bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                  placeholder="Título"
+                  value={newMedia.titulo}
+                  onChange={e => setNewMedia({...newMedia, titulo: e.target.value})}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <select 
+                    className="bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                    value={newMedia.tipo}
+                    onChange={e => setNewMedia({...newMedia, tipo: e.target.value})}
+                  >
+                    <option>Filme</option>
+                    <option>Série</option>
+                    <option>Documentário</option>
+                  </select>
+                  <select 
+                    className="bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                    value={newMedia.categoria}
+                    onChange={e => setNewMedia({...newMedia, categoria: e.target.value})}
+                  >
+                    <option>Corrida</option>
+                    <option>Motivacional</option>
+                    <option>Disciplina</option>
+                  </select>
+                </div>
+                <input 
+                  className="bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                  placeholder="Plataforma (ex: Netflix)"
+                  value={newMedia.plataforma}
+                  onChange={e => setNewMedia({...newMedia, plataforma: e.target.value})}
+                />
+                <input 
+                  type="number"
+                  className="bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                  placeholder="Ano"
+                  value={newMedia.ano}
+                  onChange={e => setNewMedia({...newMedia, ano: parseInt(e.target.value)})}
+                />
+                <textarea 
+                  className="md:col-span-2 bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 min-h-[100px]"
+                  placeholder="Sinopse"
+                  value={newMedia.sinopse}
+                  onChange={e => setNewMedia({...newMedia, sinopse: e.target.value})}
+                />
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-2">Capa do Conteúdo</label>
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1">
+                      <input 
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 mb-2"
+                        placeholder="URL da Imagem"
+                        value={newMedia.imagem_url}
+                        onChange={e => setNewMedia({...newMedia, imagem_url: e.target.value})}
+                      />
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={(e) => handleFileUpload(e, 'media', (data) => setNewMedia({...newMedia, imagem_url: data.url}))}
+                        className="text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                      />
+                    </div>
+                    {newMedia.imagem_url && (
+                      <img src={newMedia.imagem_url} className="w-16 h-24 rounded-xl object-cover border border-zinc-200 shadow-sm" />
+                    )}
+                  </div>
+                </div>
+              </div>
+              <button onClick={addMedia} className="btn-primary w-full md:w-auto">
+                <Save size={18} />
+                Salvar Conteúdo
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="font-bold text-zinc-900 flex items-center gap-2">
+                <RefreshCw size={20} className="text-emerald-600" />
+                Sugestões e Conteúdos
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {media.map(item => (
+                  <div key={item.id} className={cn(
+                    "glass-card p-4 flex items-start gap-4",
+                    item.status === 'pendente' && "border-amber-200 bg-amber-50/30"
+                  )}>
+                    <img src={item.imagem_url} className="w-16 h-24 rounded-xl object-cover border border-zinc-100" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={cn(
+                          "px-1.5 py-0.5 text-[8px] font-bold uppercase rounded",
+                          item.status === 'ativo' ? "bg-emerald-50 text-emerald-700" : "bg-amber-100 text-amber-700"
+                        )}>
+                          {item.status}
+                        </span>
+                        <span className="text-[8px] font-bold text-zinc-400 uppercase">{item.tipo}</span>
+                      </div>
+                      <h4 className="font-bold text-zinc-900 text-sm truncate">{item.titulo}</h4>
+                      <p className="text-[10px] text-zinc-500 line-clamp-2 mt-1">{item.sinopse}</p>
+                      <div className="flex gap-2 mt-3">
+                        {item.status === 'pendente' && (
+                          <button 
+                            onClick={() => approveMedia(item.id)}
+                            className="p-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg border border-emerald-100 transition-colors"
+                            title="Aprovar"
+                          >
+                            <CheckCircle size={14} />
+                          </button>
+                        )}
+                        <button 
+                          onClick={() => deleteMedia(item.id)}
+                          className="p-1.5 bg-zinc-50 text-zinc-400 hover:text-red-500 rounded-lg border border-zinc-100 transition-colors"
+                          title="Excluir"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}

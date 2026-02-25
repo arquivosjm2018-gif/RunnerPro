@@ -69,3 +69,18 @@ export interface Promotion {
   image_url: string;
   active: number;
 }
+
+export interface Media {
+  id: number;
+  tipo: 'Filme' | 'Série' | 'Documentário';
+  titulo: string;
+  categoria: 'Corrida' | 'Motivacional' | 'Disciplina';
+  sinopse: string;
+  plataforma: string;
+  ano: number;
+  imagem_url: string;
+  link_externo?: string;
+  criado_por: string;
+  status: 'ativo' | 'pendente';
+  aprovado_por_admin: number;
+}

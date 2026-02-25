@@ -91,6 +91,21 @@ db.exec(`
     active INTEGER DEFAULT 1
   );
 
+  CREATE TABLE IF NOT EXISTS midias_motivacionais (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tipo TEXT,
+    titulo TEXT,
+    categoria TEXT,
+    sinopse TEXT,
+    plataforma TEXT,
+    ano INTEGER,
+    imagem_url TEXT,
+    link_externo TEXT,
+    criado_por TEXT,
+    status TEXT DEFAULT 'pendente',
+    aprovado_por_admin INTEGER DEFAULT 0
+  );
+
   CREATE TABLE IF NOT EXISTS recommended_professionals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT,
@@ -191,15 +206,16 @@ async function startServer() {
 
   // Simple User Mock for Demo
   app.get("/api/user/me", (req, res) => {
-    let user = db.prepare("SELECT * FROM users LIMIT 1").get();
+    // In a real app, this would use session/cookies
+    // For this demo, we'll look for the admin user first
+    let user = db.prepare("SELECT * FROM users WHERE email = ?").get("bruno.gju@hotmail.com");
+    
     if (!user) {
-      db.prepare("INSERT INTO users (name, email, plan, role) VALUES (?, ?, ?, ?)").run("Runner Guest", "guest@runnerpro.ai", "Elite", "admin");
-      user = db.prepare("SELECT * FROM users LIMIT 1").get();
-    } else {
-      // Force admin status for the demo user every time they fetch
-      db.prepare("UPDATE users SET role = 'admin', plan = 'Elite' WHERE id = ?").run(user.id);
-      user = db.prepare("SELECT * FROM users LIMIT 1").get();
+      // Create the primary admin if it doesn't exist
+      db.prepare("INSERT INTO users (name, email, plan, role) VALUES (?, ?, ?, ?)").run("Bruno G.", "bruno.gju@hotmail.com", "Elite", "admin");
+      user = db.prepare("SELECT * FROM users WHERE email = ?").get("bruno.gju@hotmail.com");
     }
+    
     res.json(user);
   });
 
@@ -245,6 +261,40 @@ async function startServer() {
 
   app.delete("/api/admin/promotions/:id", (req, res) => {
     db.prepare("DELETE FROM promotions WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
+  });
+
+  // Media Routes
+  app.get("/api/media", (req, res) => {
+    const items = db.prepare("SELECT * FROM midias_motivacionais WHERE status = 'ativo'").all();
+    res.json(items);
+  });
+
+  app.get("/api/admin/media", (req, res) => {
+    const items = db.prepare("SELECT * FROM midias_motivacionais").all();
+    res.json(items);
+  });
+
+  app.post("/api/media", (req, res) => {
+    const { tipo, titulo, categoria, sinopse, plataforma, ano, imagem_url, link_externo, role } = req.body;
+    const status = role === 'admin' ? 'ativo' : 'pendente';
+    const aprovado = role === 'admin' ? 1 : 0;
+    
+    db.prepare(`
+      INSERT INTO midias_motivacionais (tipo, titulo, categoria, sinopse, plataforma, ano, imagem_url, link_externo, criado_por, status, aprovado_por_admin)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(tipo, titulo, categoria, sinopse, plataforma, ano, imagem_url, link_externo, role || 'user', status, aprovado);
+    
+    res.json({ success: true, status });
+  });
+
+  app.post("/api/admin/media/approve/:id", (req, res) => {
+    db.prepare("UPDATE midias_motivacionais SET status = 'ativo', aprovado_por_admin = 1 WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
+  });
+
+  app.delete("/api/admin/media/:id", (req, res) => {
+    db.prepare("DELETE FROM midias_motivacionais WHERE id = ?").run(req.params.id);
     res.json({ success: true });
   });
 
@@ -315,6 +365,18 @@ async function startServer() {
   app.get("/api/admin/users", (req, res) => {
     const users = db.prepare("SELECT * FROM users").all();
     res.json(users);
+  });
+
+  app.post("/api/admin/users", (req, res) => {
+    const { name, email, plan, role } = req.body;
+    try {
+      db.prepare("INSERT INTO users (name, email, plan, role) VALUES (?, ?, ?, ?)")
+        .run(name, email, plan || 'Starter', role || 'user');
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(400).json({ error: "Email já cadastrado ou dados inválidos" });
+    }
   });
 
   app.post("/api/admin/users/:id/plan", (req, res) => {

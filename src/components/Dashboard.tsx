@@ -39,7 +39,7 @@ export default function Dashboard({ user, setPage }: DashboardProps) {
     <div className="space-y-8">
       <button 
         onClick={() => setPage('admin')} 
-        className="w-full bg-red-600 hover:bg-red-700 text-white py-6 rounded-3xl font-black text-xl shadow-2xl shadow-red-900/20 flex items-center justify-center gap-4 transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+        className="w-full bg-[#111111] border border-[#D4AF37] hover:bg-[#D4AF37] text-white hover:text-black py-6 rounded-3xl font-black text-xl shadow-2xl shadow-black/20 flex items-center justify-center gap-4 transition-all transform hover:scale-[1.02] active:scale-[0.98]"
       >
         <ShieldCheck size={32} />
         ACESSO DIRETO AO PAINEL DO CRIADOR

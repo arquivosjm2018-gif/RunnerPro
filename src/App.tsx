@@ -19,7 +19,8 @@ import {
   ShieldCheck,
   Apple,
   UserCheck,
-  Shield
+  Shield,
+  Film
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -36,8 +37,9 @@ import AdminPanel from './components/AdminPanel';
 
 import NutritionAssistant from './components/NutritionAssistant';
 import ProfessionalList from './components/ProfessionalList';
+import MediaLibrary from './components/MediaLibrary';
 
-type Page = 'dashboard' | 'hashtags' | 'captions' | 'catalog' | 'training' | 'raffles' | 'promotions' | 'admin' | 'nutrition' | 'professionals';
+type Page = 'dashboard' | 'hashtags' | 'captions' | 'catalog' | 'training' | 'raffles' | 'promotions' | 'admin' | 'nutrition' | 'professionals' | 'media';
 
 export default function App() {
   const [activePage, setActivePage] = useState<Page>('dashboard');
@@ -58,6 +60,7 @@ export default function App() {
     { id: 'captions', label: 'Legendas IA', icon: ImageIcon },
     { id: 'nutrition', label: 'Nutrição IA', icon: Apple },
     { id: 'catalog', label: 'Catálogo de Artes', icon: Palette },
+    { id: 'media', label: 'Filmes & Séries', icon: Film },
     { id: 'training', label: 'Planilha de Treino', icon: Calendar },
     { id: 'professionals', label: 'Profissionais', icon: UserCheck },
     { id: 'raffles', label: 'Rifas Ativas', icon: Ticket },
@@ -71,6 +74,7 @@ export default function App() {
       case 'captions': return <CaptionGenerator user={user} />;
       case 'nutrition': return <NutritionAssistant user={user} />;
       case 'catalog': return <ArtCatalog user={user} />;
+      case 'media': return <MediaLibrary user={user} />;
       case 'training': return <TrainingPlanner user={user} />;
       case 'professionals': return <ProfessionalList />;
       case 'raffles': return <RaffleList user={user} />;
@@ -108,7 +112,9 @@ export default function App() {
                 className={cn(
                   "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
                   activePage === item.id 
-                    ? "bg-emerald-600 text-white shadow-lg shadow-emerald-900/20" 
+                    ? item.id === 'admin' 
+                      ? "bg-[#111111] border border-[#D4AF37] text-white shadow-lg shadow-black/20"
+                      : "bg-emerald-600 text-white shadow-lg shadow-emerald-900/20" 
                     : "text-zinc-400 hover:text-white hover:bg-zinc-800"
                 )}
               >
