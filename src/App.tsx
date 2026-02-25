@@ -111,7 +111,10 @@ export default function App() {
             {navItems.map((item) => (
               <button
                 key={item.id}
-                onClick={() => setActivePage(item.id as Page)}
+                onClick={() => {
+                  setActivePage(item.id as Page);
+                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                }}
                 className={cn(
                   "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
                   activePage === item.id 
@@ -162,7 +165,10 @@ export default function App() {
         <header className="h-16 bg-white border-b border-zinc-200 flex items-center justify-between px-6 lg:px-8">
           {user?.role === 'admin' && (
             <div className="absolute top-0 left-0 right-0 bg-emerald-600 text-white text-[10px] py-1 px-4 text-center font-bold z-[60]">
-              MODO ADMINISTRADOR ATIVO • <button onClick={() => setActivePage('admin')} className="underline">CLIQUE AQUI PARA ACESSAR O PAINEL</button>
+              MODO ADMINISTRADOR ATIVO • <button onClick={() => {
+                setActivePage('admin');
+                if (window.innerWidth < 1024) setIsSidebarOpen(false);
+              }} className="underline">CLIQUE AQUI PARA ACESSAR O PAINEL</button>
             </div>
           )}
           <button 
