@@ -13,6 +13,19 @@ function getAI() {
   return aiInstance;
 }
 
+async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 2000): Promise<T> {
+  try {
+    return await fn();
+  } catch (error: any) {
+    if (retries > 0 && (error?.status === 'UNAVAILABLE' || error?.message?.includes('503') || error?.message?.includes('high demand'))) {
+      console.warn(`Gemini API busy, retrying in ${delay}ms... (${retries} retries left)`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return withRetry(fn, retries - 1, delay * 2);
+    }
+    throw error;
+  }
+}
+
 export const generateHashtags = async (data: {
   type: string;
   objective: string;
@@ -43,10 +56,10 @@ Regras:
 - Use hashtags reais e usadas por corredores.
 - Entregue apenas as hashtags organizadas por bloco.`;
 
-  const response = await ai.models.generateContent({
+  const response = await withRetry(() => ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: prompt,
-  });
+  }));
 
   return response.text;
 };
@@ -72,7 +85,7 @@ Depois gere:
 Tom: Motivador, autêntico e focado em performance.
 Evite frases genéricas. Seja específico com base na imagem.`;
 
-  const response = await ai.models.generateContent({
+  const response = await withRetry(() => ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: {
       parts: [
@@ -80,7 +93,7 @@ Evite frases genéricas. Seja específico com base na imagem.`;
         { text: prompt }
       ]
     },
-  });
+  }));
 
   return response.text;
 };
@@ -112,10 +125,10 @@ Estruture:
 
 Use linguagem clara e prática.`;
 
-  const response = await ai.models.generateContent({
+  const response = await withRetry(() => ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: prompt,
-  });
+  }));
 
   return response.text;
 };
@@ -183,10 +196,10 @@ Adicione:
 - Estratégia de reposição eletrolítica`;
   }
 
-  const response = await ai.models.generateContent({
+  const response = await withRetry(() => ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: prompt,
-  });
+  }));
 
   return response.text;
 };
